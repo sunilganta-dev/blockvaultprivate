@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Block Vault Systems — MVP</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+  </head>
+
+  <body class="bg-slate-950 text-slate-100">
+    <div class="max-w-6xl mx-auto p-6">
+      <header class="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between mb-6">
+        <div>
+          <h1 class="text-2xl font-semibold">Block Vault Systems — MVP</h1>
+          <p class="text-slate-400">
+            Webcam motion detection → persistence → threat scoring → Hyperledger Fabric audit log
+          </p>
+        </div>
+
+        <div class="flex gap-2">
+          <button id="btnStart" class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700">
+            Start Camera
+          </button>
+          <button id="btnStop" class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700">
+            Stop
+          </button>
+          <button id="btnRefresh" class="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 border border-indigo-500">
+            Refresh
+          </button>
+        </div>
+      </header>
+
+      <section class="mb-6 rounded-2xl border border-slate-800 bg-slate-900/40 p-4">
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div class="flex items-center gap-3">
+            <span id="statusDot" class="inline-block w-2.5 h-2.5 rounded-full bg-slate-500"></span>
+            <div>
+              <div class="text-sm text-slate-300">
+                Status: <span id="statusText" class="font-medium">Idle</span>
+              </div>
+              <div class="text-xs text-slate-400">
+                API: <span id="apiText">checking…</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
+            <label class="block">
+              <span class="text-slate-400 text-xs">Sensitivity</span>
+              <input id="sensitivity" type="range" min="5" max="60" value="18" class="w-full" />
+            </label>
+
+            <label class="block">
+              <span class="text-slate-400 text-xs">Cooldown (ms)</span>
+              <input
+                id="cooldown"
+                type="number"
+                value="3000"
+                class="w-full rounded-xl bg-slate-950 border border-slate-800 px-3 py-2"
+              />
+            </label>
+
+            <label class="block">
+              <span class="text-slate-400 text-xs">Min Burst (ms)</span>
+              <input
+                id="minBurst"
+                type="number"
+                value="1200"
+                class="w-full rounded-xl bg-slate-950 border border-slate-800 px-3 py-2"
+              />
+            </label>
+
+            <div class="hidden sm:block">
+              <div class="text-slate-400 text-xs">Motion Score</div>
+              <div class="text-lg font-semibold tabular-nums">
+                <span id="motionScore">0.00</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <main class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <section class="rounded-2xl bg-slate-900/60 border border-slate-800 p-4">
+          <div class="flex items-center justify-between mb-3">
+            <h2 class="text-lg font-medium">Live Camera</h2>
+            <div class="text-sm text-slate-400 sm:hidden">
+              Motion: <span id="motionScoreSm">0.00</span>
+            </div>
+          </div>
+
+          <video id="video" autoplay playsinline class="w-full rounded-2xl bg-black border border-slate-800"></video>
+          <canvas id="canvas" class="hidden"></canvas>
+
+          <div class="mt-3 text-xs text-slate-400 leading-relaxed">
+            Min Burst forces “persistent motion” before an incident is created. The server computes threat scoring and writes the
+            decision + hashes on-chain.
+          </div>
+        </section>
+
+        <section class="rounded-2xl bg-slate-900/60 border border-slate-800 p-4">
+          <div class="flex items-center justify-between mb-3">
+            <h2 class="text-lg font-medium">Incidents (On-chain)</h2>
+            <div class="text-sm text-slate-400">Count: <span id="count">0</span></div>
+          </div>
+
+          <div id="incidents" class="space-y-3"></div>
+        </section>
+      </main>
+    </div>
+
+    <!-- cache-bust to guarantee latest JS -->
+    <script type="module" src="/app.js?v=3"></script>
+  </body>
+</html>
