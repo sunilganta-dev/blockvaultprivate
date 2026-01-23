@@ -5,157 +5,244 @@
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <title>Block Vault Systems — Security MVP</title>
     <script src="https://cdn.tailwindcss.com"></script>
+
+    <style>
+      /* Focus Mode: hide header/status on small screens only */
+      @media (max-width: 1023px) {
+        body.focus-mode #topHeader {
+          transform: translateY(-110%);
+          opacity: 0;
+          pointer-events: none;
+        }
+        body.focus-mode #statusRow {
+          display: none;
+        }
+        body.focus-mode #focusHint {
+          display: flex;
+        }
+      }
+
+      /* Smooth header slide */
+      #topHeader {
+        transition: transform 220ms ease, opacity 220ms ease;
+      }
+    </style>
   </head>
 
   <body class="min-h-screen bg-slate-950 text-slate-100">
     <!-- Top Bar -->
     <header class="sticky top-0 z-30 border-b border-slate-800/60 bg-slate-950/80 backdrop-blur">
-      <div class="mx-auto max-w-7xl px-5 py-4">
-        <div class="flex items-center justify-between gap-3">
-          <div class="flex items-center gap-3 min-w-0">
-            <div class="h-9 w-9 rounded-xl bg-gradient-to-br from-indigo-500/70 to-cyan-400/50 border border-slate-700/60"></div>
-            <div class="min-w-0">
-              <div class="flex items-center gap-2 flex-wrap">
-                <h1 class="text-lg sm:text-xl font-semibold tracking-tight truncate">Block Vault Systems</h1>
-                <span class="text-[11px] px-2 py-0.5 rounded-lg border border-slate-700/70 text-slate-300 bg-slate-900/40">
-                  MVP • Local Fabric
-                </span>
-                <span class="text-[11px] px-2 py-0.5 rounded-lg border border-indigo-500/40 text-indigo-200 bg-indigo-500/10">
-                  UI v3.7 • Drawer Layout
-                </span>
+      <!-- NEW wrapper so we can hide JUST the header content safely -->
+      <div id="topHeader">
+        <div class="mx-auto max-w-7xl px-5 py-4">
+          <div class="flex items-center justify-between gap-3">
+            <div class="flex items-center gap-3 min-w-0">
+              <div
+                class="h-9 w-9 rounded-xl bg-gradient-to-br from-indigo-500/70 to-cyan-400/50 border border-slate-700/60"
+              ></div>
+              <div class="min-w-0">
+                <div class="flex items-center gap-2 flex-wrap">
+                  <h1 class="text-lg sm:text-xl font-semibold tracking-tight truncate">Block Vault Systems</h1>
+                  <span
+                    class="text-[11px] px-2 py-0.5 rounded-lg border border-slate-700/70 text-slate-300 bg-slate-900/40"
+                  >
+                    MVP • Local Fabric
+                  </span>
+                  <span
+                    class="text-[11px] px-2 py-0.5 rounded-lg border border-indigo-500/40 text-indigo-200 bg-indigo-500/10"
+                  >
+                    UI v3.8 • Camera Flip
+                  </span>
+                </div>
+                <p class="text-xs sm:text-sm text-slate-400 truncate">
+                  Signals (motion) → Events (tamper/moved/high-motion) → On-chain audit log
+                </p>
               </div>
-              <p class="text-xs sm:text-sm text-slate-400 truncate">
-                Signals (motion) → Events (tamper/moved/high-motion) → On-chain audit log
-              </p>
+            </div>
+
+            <div class="flex items-center gap-2 shrink-0">
+              <button
+                id="btnSettings"
+                class="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 font-medium text-sm"
+              >
+                Settings
+              </button>
+              <button
+                id="btnRefresh"
+                class="px-3 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 border border-indigo-500/50 font-medium text-sm"
+              >
+                Refresh
+              </button>
             </div>
           </div>
 
-          <div class="flex items-center gap-2 shrink-0">
-            <button id="btnSettings"
-              class="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 font-medium text-sm">
-              Settings
-            </button>
-            <button id="btnRefresh"
-              class="px-3 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 border border-indigo-500/50 font-medium text-sm">
-              Refresh
-            </button>
-          </div>
-        </div>
+          <!-- System Status Row -->
+          <!-- NEW wrapper so we can collapse JUST this row in focus mode -->
+          <div id="statusRow" class="mt-4 grid grid-cols-1 lg:grid-cols-12 gap-3">
+            <div class="lg:col-span-7 rounded-2xl border border-slate-800/70 bg-slate-900/40 px-4 py-3">
+              <div class="flex items-center justify-between gap-3">
+                <div class="flex items-center gap-3">
+                  <span id="statusDot" class="inline-block h-2.5 w-2.5 rounded-full bg-slate-500"></span>
+                  <div>
+                    <div class="text-sm">
+                      System: <span id="statusText" class="font-semibold text-slate-200">Idle</span>
 
-        <!-- System Status Row -->
-        <div class="mt-4 grid grid-cols-1 lg:grid-cols-12 gap-3">
-          <div class="lg:col-span-7 rounded-2xl border border-slate-800/70 bg-slate-900/40 px-4 py-3">
-            <div class="flex items-center justify-between gap-3">
-              <div class="flex items-center gap-3">
-                <span id="statusDot" class="inline-block h-2.5 w-2.5 rounded-full bg-slate-500"></span>
-                <div>
-                  <div class="text-sm">
-                    System: <span id="statusText" class="font-semibold text-slate-200">Idle</span>
+                      <span
+                        id="armedPill"
+                        class="ml-2 hidden text-[11px] px-2 py-0.5 rounded-lg border border-emerald-500/40 text-emerald-200 bg-emerald-500/10"
+                      >
+                        ARMED
+                      </span>
 
-                    <span id="armedPill"
-                      class="ml-2 hidden text-[11px] px-2 py-0.5 rounded-lg border border-emerald-500/40 text-emerald-200 bg-emerald-500/10">
-                      ARMED
-                    </span>
+                      <span
+                        id="tamperPill"
+                        class="ml-2 hidden text-[11px] px-2 py-0.5 rounded-lg border border-red-500/40 text-red-200 bg-red-500/10"
+                      >
+                        TAMPER
+                      </span>
 
-                    <span id="tamperPill"
-                      class="ml-2 hidden text-[11px] px-2 py-0.5 rounded-lg border border-red-500/40 text-red-200 bg-red-500/10">
-                      TAMPER
-                    </span>
+                      <span
+                        id="movedPill"
+                        class="ml-2 hidden text-[11px] px-2 py-0.5 rounded-lg border border-amber-500/40 text-amber-200 bg-amber-500/10"
+                      >
+                        MOVED
+                      </span>
+                    </div>
 
-                    <span id="movedPill"
-                      class="ml-2 hidden text-[11px] px-2 py-0.5 rounded-lg border border-amber-500/40 text-amber-200 bg-amber-500/10">
-                      MOVED
-                    </span>
+                    <div class="text-xs text-slate-400">
+                      API: <span id="apiText" class="text-slate-300">checking…</span>
+                      <span class="mx-2 text-slate-600">•</span>
+                      Network: <span id="netText" class="text-slate-300">local</span>
+                    </div>
                   </div>
+                </div>
 
-                  <div class="text-xs text-slate-400">
-                    API: <span id="apiText" class="text-slate-300">checking…</span>
-                    <span class="mx-2 text-slate-600">•</span>
-                    Network: <span id="netText" class="text-slate-300">local</span>
-                  </div>
+                <div class="text-right">
+                  <div class="text-xs text-slate-400">On-chain incidents</div>
+                  <div class="text-lg font-semibold tabular-nums"><span id="count">0</span></div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Quick Controls -->
+            <div class="lg:col-span-5 rounded-2xl border border-slate-800/70 bg-slate-900/40 px-4 py-3">
+              <!-- Row A: Camera controls + Camera select/flip (mobile-friendly) -->
+              <div class="flex items-center justify-between gap-3 flex-wrap">
+                <div class="flex items-center gap-2">
+                  <button
+                    id="btnStart"
+                    class="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 font-medium text-sm"
+                  >
+                    Start Camera
+                  </button>
+                  <button
+                    id="btnStop"
+                    class="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 font-medium text-sm"
+                  >
+                    Stop
+                  </button>
+                </div>
+
+                <!-- Camera picker + flip -->
+                <div class="flex items-center gap-2 w-full sm:w-auto">
+                  <select
+                    id="cameraSelect"
+                    class="w-full sm:w-56 px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-sm text-slate-200"
+                  >
+                    <option value="">Default camera</option>
+                  </select>
+                  <button
+                    id="btnFlip"
+                    class="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 font-medium text-sm whitespace-nowrap"
+                  >
+                    Flip
+                  </button>
                 </div>
               </div>
 
-              <div class="text-right">
-                <div class="text-xs text-slate-400">On-chain incidents</div>
-                <div class="text-lg font-semibold tabular-nums"><span id="count">0</span></div>
-              </div>
-            </div>
-          </div>
+              <!-- Row B: Arm/Disarm -->
+              <div class="mt-3 flex items-center justify-between gap-3 flex-wrap">
+                <div class="flex items-center gap-2">
+                  <button
+                    id="btnArm"
+                    class="px-3 py-2 rounded-xl bg-emerald-600/90 hover:bg-emerald-500 border border-emerald-500/40 font-medium text-sm"
+                  >
+                    Arm
+                  </button>
+                  <button
+                    id="btnDisarm"
+                    class="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 font-medium text-sm"
+                  >
+                    Disarm
+                  </button>
+                </div>
 
-          <!-- Quick Controls -->
-          <div class="lg:col-span-5 rounded-2xl border border-slate-800/70 bg-slate-900/40 px-4 py-3">
-            <div class="flex items-center justify-between gap-3 flex-wrap">
-              <div class="flex items-center gap-2">
-                <button id="btnStart"
-                  class="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 font-medium text-sm">
-                  Start Camera
-                </button>
-                <button id="btnStop"
-                  class="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 font-medium text-sm">
-                  Stop
-                </button>
+                <div class="flex items-center gap-2">
+                  <button
+                    id="btnCalibrate"
+                    class="px-3 py-2 rounded-xl bg-cyan-600/90 hover:bg-cyan-500 border border-cyan-500/40 font-medium text-sm"
+                  >
+                    Auto-Calibrate
+                  </button>
+                  <button
+                    id="btnSimulate"
+                    class="px-3 py-2 rounded-xl bg-amber-600/90 hover:bg-amber-500 border border-amber-500/40 font-medium text-sm"
+                  >
+                    Simulate
+                  </button>
+                </div>
               </div>
 
-              <div class="flex items-center gap-2">
-                <button id="btnArm"
-                  class="px-3 py-2 rounded-xl bg-emerald-600/90 hover:bg-emerald-500 border border-emerald-500/40 font-medium text-sm">
-                  Arm
-                </button>
-                <button id="btnDisarm"
-                  class="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 font-medium text-sm">
-                  Disarm
-                </button>
-              </div>
-
-              <div class="flex items-center gap-2">
-                <button id="btnCalibrate"
-                  class="px-3 py-2 rounded-xl bg-cyan-600/90 hover:bg-cyan-500 border border-cyan-500/40 font-medium text-sm">
-                  Auto-Calibrate
-                </button>
-                <button id="btnSimulate"
-                  class="px-3 py-2 rounded-xl bg-amber-600/90 hover:bg-amber-500 border border-amber-500/40 font-medium text-sm">
-                  Simulate
-                </button>
-              </div>
-            </div>
-
-            <!-- Live Motion Indicator -->
-            <div class="mt-3 rounded-2xl border border-slate-800 bg-slate-950/40 p-3">
-              <div class="flex items-end justify-between">
-                <div>
-                  <div class="text-xs text-slate-400">Live Motion (signal)</div>
-                  <div class="text-2xl font-semibold tabular-nums">
-                    <span id="motionScore">0.00</span><span class="text-xs text-slate-500 ml-1">%</span>
+              <!-- Live Motion Indicator -->
+              <div class="mt-3 rounded-2xl border border-slate-800 bg-slate-950/40 p-3">
+                <div class="flex items-end justify-between">
+                  <div>
+                    <div class="text-xs text-slate-400">Live Motion (signal)</div>
+                    <div class="text-2xl font-semibold tabular-nums">
+                      <span id="motionScore">0.00</span><span class="text-xs text-slate-500 ml-1">%</span>
+                    </div>
+                  </div>
+                  <div class="text-xs text-slate-500">
+                    Burst: <span id="burstText" class="text-slate-300">0ms</span>
                   </div>
                 </div>
-                <div class="text-xs text-slate-500">
-                  Burst: <span id="burstText" class="text-slate-300">0ms</span>
+                <div class="mt-2 h-2 rounded-full bg-slate-800 overflow-hidden">
+                  <div id="motionBar" class="h-2 w-0 bg-indigo-500/70"></div>
                 </div>
-              </div>
-              <div class="mt-2 h-2 rounded-full bg-slate-800 overflow-hidden">
-                <div id="motionBar" class="h-2 w-0 bg-indigo-500/70"></div>
               </div>
             </div>
           </div>
+          <!-- /statusRow -->
         </div>
       </div>
     </header>
+
+    <!-- NEW: Focus hint handle (only visible in focus-mode on mobile) -->
+    <div
+      id="focusHint"
+      class="hidden fixed top-2 left-0 right-0 z-40 items-center justify-center pointer-events-none"
+    >
+      <div class="px-3 py-1 rounded-full border border-slate-700/70 bg-slate-950/80 text-[11px] text-slate-300 backdrop-blur">
+        Swipe down to show controls • Swipe up to hide
+      </div>
+    </div>
 
     <!-- Main Grid -->
     <main class="mx-auto max-w-7xl px-5 py-6">
       <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
         <!-- Camera + Debug -->
         <section class="lg:col-span-7 space-y-4">
-          <div class="rounded-3xl border border-slate-800/70 bg-slate-900/40 overflow-hidden">
+          <div id="cameraCard" class="rounded-3xl border border-slate-800/70 bg-slate-900/40 overflow-hidden">
             <div class="px-5 py-4 border-b border-slate-800/70">
               <div class="flex items-center justify-between">
                 <div>
                   <h2 class="text-lg font-semibold">Live Camera</h2>
                   <p class="text-sm text-slate-400">The camera stays visible; settings live in the drawer.</p>
                 </div>
-                <button id="btnSetBaseline"
-                  class="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 font-medium text-sm">
+                <button
+                  id="btnSetBaseline"
+                  class="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 font-medium text-sm"
+                >
                   Set Baseline
                 </button>
               </div>
@@ -175,8 +262,10 @@
                 <h3 class="text-base font-semibold">Live Debug</h3>
                 <p class="text-sm text-slate-400">Signals + policy gating</p>
               </div>
-              <span id="loopPill"
-                class="text-[11px] px-2 py-0.5 rounded-lg border border-slate-700/70 text-slate-300 bg-slate-900/40">
+              <span
+                id="loopPill"
+                class="text-[11px] px-2 py-0.5 rounded-lg border border-slate-700/70 text-slate-300 bg-slate-900/40"
+              >
                 LOOP: IDLE
               </span>
             </div>
@@ -264,15 +353,18 @@
       <!-- Drawer -->
       <aside
         id="settingsDrawer"
-        class="absolute right-0 top-0 h-full w-full max-w-md bg-slate-950 border-l border-slate-800 shadow-2xl">
+        class="absolute right-0 top-0 h-full w-full max-w-md bg-slate-950 border-l border-slate-800 shadow-2xl"
+      >
         <div class="h-full flex flex-col">
           <div class="px-5 py-4 border-b border-slate-800 flex items-center justify-between">
             <div>
               <div class="text-lg font-semibold">Settings</div>
               <div class="text-sm text-slate-400">Tune signals + logging policy</div>
             </div>
-            <button id="btnCloseSettings"
-              class="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 font-medium text-sm">
+            <button
+              id="btnCloseSettings"
+              class="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 font-medium text-sm"
+            >
               Close
             </button>
           </div>
@@ -286,7 +378,9 @@
               <div class="mt-3 grid grid-cols-1 gap-3">
                 <label class="block">
                   <div class="text-[11px] text-slate-400 mb-1">Log High Motion</div>
-                  <div class="w-full rounded-xl bg-slate-950 border border-slate-800 px-3 py-2 text-sm flex items-center justify-between">
+                  <div
+                    class="w-full rounded-xl bg-slate-950 border border-slate-800 px-3 py-2 text-sm flex items-center justify-between"
+                  >
                     <span class="text-slate-300">Enable</span>
                     <input id="logMotionEnabled" type="checkbox" checked class="h-4 w-4" />
                   </div>
@@ -294,15 +388,27 @@
 
                 <label class="block">
                   <div class="text-[11px] text-slate-400 mb-1">Log Motion Threshold (%)</div>
-                  <input id="logMotionThreshold" type="number" value="14" min="1" max="60"
-                    class="w-full rounded-xl bg-slate-950 border border-slate-800 px-3 py-2 text-sm" />
+                  <input
+                    id="logMotionThreshold"
+                    type="number"
+                    value="14"
+                    min="1"
+                    max="60"
+                    class="w-full rounded-xl bg-slate-950 border border-slate-800 px-3 py-2 text-sm"
+                  />
                   <div class="mt-1 text-[11px] text-slate-500">Only log when EMA exceeds this</div>
                 </label>
 
                 <label class="block">
                   <div class="text-[11px] text-slate-400 mb-1">Quiet Re-arm (ms)</div>
-                  <input id="quietRearmMs" type="number" value="900" min="0" max="5000"
-                    class="w-full rounded-xl bg-slate-950 border border-slate-800 px-3 py-2 text-sm" />
+                  <input
+                    id="quietRearmMs"
+                    type="number"
+                    value="900"
+                    min="0"
+                    max="5000"
+                    class="w-full rounded-xl bg-slate-950 border border-slate-800 px-3 py-2 text-sm"
+                  />
                   <div class="mt-1 text-[11px] text-slate-500">Require calm before next event</div>
                 </label>
               </div>
@@ -321,27 +427,47 @@
 
                 <label class="block">
                   <div class="text-[11px] text-slate-400 mb-1">Pixel Delta</div>
-                  <input id="pixelDelta" type="number" value="18" min="5" max="80"
-                    class="w-full rounded-xl bg-slate-950 border border-slate-800 px-3 py-2 text-sm" />
+                  <input
+                    id="pixelDelta"
+                    type="number"
+                    value="18"
+                    min="5"
+                    max="80"
+                    class="w-full rounded-xl bg-slate-950 border border-slate-800 px-3 py-2 text-sm"
+                  />
                   <div class="mt-1 text-[11px] text-slate-500">Increase if you see phantom motion</div>
                 </label>
 
                 <label class="block">
                   <div class="text-[11px] text-slate-400 mb-1">Grace (ms)</div>
-                  <input id="graceMs" type="number" value="300" min="0" max="2000"
-                    class="w-full rounded-xl bg-slate-950 border border-slate-800 px-3 py-2 text-sm" />
+                  <input
+                    id="graceMs"
+                    type="number"
+                    value="300"
+                    min="0"
+                    max="2000"
+                    class="w-full rounded-xl bg-slate-950 border border-slate-800 px-3 py-2 text-sm"
+                  />
                 </label>
 
                 <label class="block">
                   <div class="text-[11px] text-slate-400 mb-1">Min Burst (ms)</div>
-                  <input id="minBurst" type="number" value="1200"
-                    class="w-full rounded-xl bg-slate-950 border border-slate-800 px-3 py-2 text-sm" />
+                  <input
+                    id="minBurst"
+                    type="number"
+                    value="1200"
+                    class="w-full rounded-xl bg-slate-950 border border-slate-800 px-3 py-2 text-sm"
+                  />
                 </label>
 
                 <label class="block">
                   <div class="text-[11px] text-slate-400 mb-1">Cooldown (ms)</div>
-                  <input id="cooldown" type="number" value="2500"
-                    class="w-full rounded-xl bg-slate-950 border border-slate-800 px-3 py-2 text-sm" />
+                  <input
+                    id="cooldown"
+                    type="number"
+                    value="2500"
+                    class="w-full rounded-xl bg-slate-950 border border-slate-800 px-3 py-2 text-sm"
+                  />
                 </label>
               </div>
             </div>
@@ -354,7 +480,9 @@
               <div class="mt-3 space-y-3">
                 <label class="block">
                   <div class="text-[11px] text-slate-400 mb-1">Tamper Enabled</div>
-                  <div class="w-full rounded-xl bg-slate-950 border border-slate-800 px-3 py-2 text-sm flex items-center justify-between">
+                  <div
+                    class="w-full rounded-xl bg-slate-950 border border-slate-800 px-3 py-2 text-sm flex items-center justify-between"
+                  >
                     <span class="text-slate-300">Enable</span>
                     <input id="tamperEnabled" type="checkbox" checked class="h-4 w-4" />
                   </div>
@@ -362,14 +490,26 @@
 
                 <label class="block">
                   <div class="text-[11px] text-slate-400 mb-1">Tamper Hold (ms)</div>
-                  <input id="tamperHoldMs" type="number" value="900" min="200" max="5000"
-                    class="w-full rounded-xl bg-slate-950 border border-slate-800 px-3 py-2 text-sm" />
+                  <input
+                    id="tamperHoldMs"
+                    type="number"
+                    value="900"
+                    min="200"
+                    max="5000"
+                    class="w-full rounded-xl bg-slate-950 border border-slate-800 px-3 py-2 text-sm"
+                  />
                 </label>
 
                 <label class="block">
                   <div class="text-[11px] text-slate-400 mb-1">Freeze Hold (ms)</div>
-                  <input id="freezeHoldMs" type="number" value="2500" min="800" max="10000"
-                    class="w-full rounded-xl bg-slate-950 border border-slate-800 px-3 py-2 text-sm" />
+                  <input
+                    id="freezeHoldMs"
+                    type="number"
+                    value="2500"
+                    min="800"
+                    max="10000"
+                    class="w-full rounded-xl bg-slate-950 border border-slate-800 px-3 py-2 text-sm"
+                  />
                 </label>
               </div>
             </div>
@@ -382,7 +522,9 @@
               <div class="mt-3 space-y-3">
                 <label class="block">
                   <div class="text-[11px] text-slate-400 mb-1">Reposition Enabled</div>
-                  <div class="w-full rounded-xl bg-slate-950 border border-slate-800 px-3 py-2 text-sm flex items-center justify-between">
+                  <div
+                    class="w-full rounded-xl bg-slate-950 border border-slate-800 px-3 py-2 text-sm flex items-center justify-between"
+                  >
                     <span class="text-slate-300">Enable</span>
                     <input id="movedEnabled" type="checkbox" checked class="h-4 w-4" />
                   </div>
@@ -390,18 +532,29 @@
 
                 <label class="block">
                   <div class="text-[11px] text-slate-400 mb-1">Moved Threshold</div>
-                  <input id="movedThreshold" type="number" value="18" min="6" max="48"
-                    class="w-full rounded-xl bg-slate-950 border border-slate-800 px-3 py-2 text-sm" />
+                  <input
+                    id="movedThreshold"
+                    type="number"
+                    value="18"
+                    min="6"
+                    max="48"
+                    class="w-full rounded-xl bg-slate-950 border border-slate-800 px-3 py-2 text-sm"
+                  />
                 </label>
 
                 <label class="block">
                   <div class="text-[11px] text-slate-400 mb-1">Moved Hold (ms)</div>
-                  <input id="movedHoldMs" type="number" value="1200" min="200" max="8000"
-                    class="w-full rounded-xl bg-slate-950 border border-slate-800 px-3 py-2 text-sm" />
+                  <input
+                    id="movedHoldMs"
+                    type="number"
+                    value="1200"
+                    min="200"
+                    max="8000"
+                    class="w-full rounded-xl bg-slate-950 border border-slate-800 px-3 py-2 text-sm"
+                  />
                 </label>
               </div>
             </div>
-
           </div>
         </div>
       </aside>
@@ -435,6 +588,105 @@
       });
     </script>
 
-    <script type="module" src="/app.js?v=37"></script>
+    <!-- NEW: Focus Mode script (does not touch your app.js) -->
+    <script>
+      (function () {
+        const isMobile = () => window.matchMedia("(max-width: 1023px)").matches;
+
+        // Focus mode toggles
+        const enableFocus = () => {
+          if (!isMobile()) return;
+          document.body.classList.add("focus-mode");
+        };
+        const disableFocus = () => {
+          document.body.classList.remove("focus-mode");
+        };
+
+        // 1) When user presses Start Camera, auto-enter focus mode after a moment
+        const btnStart = document.getElementById("btnStart");
+        btnStart?.addEventListener("click", () => {
+          setTimeout(() => enableFocus(), 450);
+        });
+
+        // 2) Also enter focus mode when camera card is in view and user scrolls down
+        const cameraCard = document.getElementById("cameraCard");
+        if (cameraCard && "IntersectionObserver" in window) {
+          const io = new IntersectionObserver(
+            (entries) => {
+              if (!isMobile()) return;
+              for (const e of entries) {
+                // If camera card is strongly visible, auto-focus (but only if user has scrolled some)
+                if (e.isIntersecting && e.intersectionRatio >= 0.65 && window.scrollY > 40) {
+                  enableFocus();
+                }
+              }
+            },
+            { threshold: [0.35, 0.65, 0.85] }
+          );
+          io.observe(cameraCard);
+        }
+
+        // 3) Swipe gestures: swipe DOWN to show controls, swipe UP to hide controls
+        let startY = null;
+        let startX = null;
+        let startT = null;
+
+        window.addEventListener(
+          "touchstart",
+          (e) => {
+            if (!isMobile()) return;
+            const t = e.touches && e.touches[0];
+            if (!t) return;
+            startY = t.clientY;
+            startX = t.clientX;
+            startT = Date.now();
+          },
+          { passive: true }
+        );
+
+        window.addEventListener(
+          "touchend",
+          (e) => {
+            if (!isMobile() || startY === null || startX === null) return;
+
+            const t = e.changedTouches && e.changedTouches[0];
+            if (!t) return;
+
+            const dy = t.clientY - startY;
+            const dx = t.clientX - startX;
+            const dt = Date.now() - (startT || Date.now());
+
+            // Require mostly vertical swipe + minimum distance
+            const absY = Math.abs(dy);
+            const absX = Math.abs(dx);
+
+            // ignore slow drags / tiny moves / horizontal
+            if (dt > 900) return;
+            if (absY < 55) return;
+            if (absX > absY * 0.55) return;
+
+            if (dy > 0) {
+              // swipe DOWN => show header/controls
+              disableFocus();
+            } else {
+              // swipe UP => hide header/controls
+              enableFocus();
+            }
+
+            startY = null;
+            startX = null;
+            startT = null;
+          },
+          { passive: true }
+        );
+
+        // 4) If user rotates / resizes to desktop, ensure header is back
+        window.addEventListener("resize", () => {
+          if (!isMobile()) disableFocus();
+        });
+      })();
+    </script>
+
+    <script type="module" src="/app.js?v=38"></script>
   </body>
 </html>

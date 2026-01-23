@@ -1,7 +1,8 @@
-// BVS UI v3.6 — Policy-gated event logging
+// BVS UI v3.8 — Policy-gated event logging + Mobile Camera Flip
 // - Motion is a signal always visible in UI
 // - Events logged on-chain: TAMPER, MOVED, and HIGH-MOTION only (configurable)
 // - Quiet Re-arm prevents repeated phantom events from camera noise/exposure
+// - Mobile camera support: dropdown device select + Flip (front/back)
 
 const $ = (id) => document.getElementById(id);
 
@@ -17,6 +18,10 @@ const btnDisarm = $("btnDisarm");
 const btnCalibrate = $("btnCalibrate");
 const btnSimulate = $("btnSimulate");
 const btnSetBaseline = $("btnSetBaseline");
+
+// NEW: camera UI
+const cameraSelectEl = $("cameraSelect");
+const btnFlip = $("btnFlip");
 
 const sensitivityEl = $("sensitivity"); // motion signal threshold in %
 const cooldownEl = $("cooldown");
@@ -111,6 +116,99 @@ const smallCanvas = document.createElement("canvas");
 smallCanvas.width = SMALL_W;
 smallCanvas.height = SMALL_H;
 const smallCtx = smallCanvas.getContext("2d", { willReadFrequently: true });
+
+// -------------------------------
+// Camera selection / flip state
+// -------------------------------
+let selectedDeviceId = "";
+let facingMode = "environment"; // back camera preferred on phones
+let hasEverRequestedPermission = false;
+
+function isCameraRunning() {
+  try {
+    return !!(video && video.srcObject && video.srcObject.getTracks().some(t => t.readyState === "live"));
+  } catch {
+    return false;
+  }
+}
+
+async function ensureLabelsAvailableOnce() {
+  // device labels on iOS/Safari often require permission first
+  if (hasEverRequestedPermission) return;
+  try {
+    await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+    hasEverRequestedPermission = true;
+  } catch {
+    // Ignore. If permission denied, enumeration will still work but labels may be blank.
+  }
+}
+
+async function populateCameras() {
+  if (!cameraSelectEl || !navigator.mediaDevices?.enumerateDevices) return;
+
+  await ensureLabelsAvailableOnce();
+
+  const devices = await navigator.mediaDevices.enumerateDevices();
+  const cams = devices.filter((d) => d.kind === "videoinput");
+
+  const keep = cameraSelectEl.value || selectedDeviceId || "";
+  cameraSelectEl.innerHTML = `<option value="">Default camera</option>` + cams
+    .map((c, i) => {
+      const name = (c.label || "").trim() || `Camera ${i + 1}`;
+      return `<option value="${c.deviceId}">${name}</option>`;
+    })
+    .join("");
+
+  if (keep) cameraSelectEl.value = keep;
+
+  cameraSelectEl.onchange = async () => {
+    selectedDeviceId = cameraSelectEl.value || "";
+    if (isCameraRunning()) {
+      await restartCamera();
+    }
+  };
+}
+
+function getVideoConstraints() {
+  // If user explicitly chose a device, use it.
+  if (selectedDeviceId) {
+    return {
+      deviceId: { exact: selectedDeviceId },
+      width: { ideal: 960 },
+      height: { ideal: 540 }
+    };
+  }
+  // Otherwise use facingMode best-effort (mobile flip)
+  return {
+    facingMode: { ideal: facingMode },
+    width: { ideal: 960 },
+    height: { ideal: 540 }
+  };
+}
+
+async function flipCamera() {
+  facingMode = (facingMode === "user") ? "environment" : "user";
+  selectedDeviceId = "";
+  if (cameraSelectEl) cameraSelectEl.value = "";
+  if (isCameraRunning()) {
+    await restartCamera();
+  }
+}
+
+async function restartCamera() {
+  try {
+    stopCamera();
+    await startCamera();
+  } catch (e) {
+    console.error(e);
+    setError(e?.message || String(e));
+  }
+}
+
+btnFlip?.addEventListener("click", flipCamera);
+navigator.mediaDevices?.addEventListener?.("devicechange", populateCameras);
+
+// -------------------------------
 
 let lastError = "none";
 function setError(msg) {
@@ -393,8 +491,11 @@ async function startCamera() {
     await checkHealth();
     setError("none");
 
+    // Populate camera dropdown (labels) after permission if possible
+    await populateCameras();
+
     stream = await navigator.mediaDevices.getUserMedia({
-      video: { width: 960, height: 540 },
+      video: getVideoConstraints(),
       audio: false
     });
 
@@ -440,7 +541,7 @@ async function startCamera() {
     setError(e?.message || String(e));
     setStatus("error", "Camera blocked/unavailable");
     loopPill.textContent = "LOOP: ERROR";
-    alert("Camera access failed. Check browser permissions for localhost:8080.");
+    alert("Camera access failed. Check browser permissions for this site and try again.");
   }
 }
 
@@ -815,3 +916,6 @@ setArmed(false);
 setStatus("idle", "Idle");
 checkHealth();
 refreshIncidents();
+
+// Populate camera list on load (may be blank labels until permission)
+populateCameras();
