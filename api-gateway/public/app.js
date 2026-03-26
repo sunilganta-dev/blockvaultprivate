@@ -141,8 +141,8 @@ let tamperReason = "—";
 
 // Reposition baseline + timers
 let baselineHash = null;          // Uint32Array(2)
-let baselineSetAt = null;         // epoch ms
-let baselineAutoAt = null;        // epoch ms
+let baselineSetAt = null;
+let baselineAutoAt = null;
 const BASELINE_WARMUP_MS = 1400;
 
 let movedStartAt = null;

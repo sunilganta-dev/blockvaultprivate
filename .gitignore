@@ -19,6 +19,12 @@ api-gateway/public/evidence/
 # Blockchain data (runtime state)
 chain.json
 
+# Legacy TypeScript gateway (superseded by api-gateway/public/)
+api-gateway/src/
+api-gateway/tsconfig.json
+api-gateway/package.json
+api-gateway/package-lock.json
+
 # OS / IDE
 .DS_Store
 .history/
