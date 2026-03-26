@@ -26,6 +26,99 @@
       #topHeader {
         transition: transform 220ms ease, opacity 220ms ease;
       }
+
+      /* New threat event flash-in */
+      @keyframes threatFlash {
+        0%   { box-shadow: 0 0 0 2px rgba(239,68,68,0.7), 0 0 18px rgba(239,68,68,0.35); background-color: rgba(239,68,68,0.10); }
+        50%  { box-shadow: 0 0 0 2px rgba(239,68,68,0.3), 0 0 8px rgba(239,68,68,0.15); }
+        100% { box-shadow: none; background-color: transparent; }
+      }
+      @keyframes motionFlash {
+        0%   { box-shadow: 0 0 0 2px rgba(99,102,241,0.7), 0 0 18px rgba(99,102,241,0.35); background-color: rgba(99,102,241,0.10); }
+        50%  { box-shadow: 0 0 0 2px rgba(99,102,241,0.3), 0 0 8px rgba(99,102,241,0.15); }
+        100% { box-shadow: none; background-color: transparent; }
+      }
+      .event-flash-threat {
+        animation: threatFlash 1.6s ease-out forwards;
+      }
+      .event-flash-motion {
+        animation: motionFlash 1.6s ease-out forwards;
+      }
+
+      /* Pulsing TAMPER pill while active */
+      @keyframes tamperPulse {
+        0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(239,68,68,0.5); }
+        50%       { opacity: 0.75; box-shadow: 0 0 0 4px rgba(239,68,68,0); }
+      }
+      #tamperPill:not(.hidden) {
+        animation: tamperPulse 1s ease-in-out infinite;
+      }
+
+      /* Persistent threat-active blink on the feed panel border */
+      @keyframes feedThreatBlink {
+        0%, 100% { border-color: rgba(239,68,68,0.55); box-shadow: 0 0 0 1px rgba(239,68,68,0.18), 0 0 28px rgba(239,68,68,0.12); }
+        50%       { border-color: rgba(239,68,68,0.18); box-shadow: 0 0 0 1px rgba(239,68,68,0.06), 0 0 8px  rgba(239,68,68,0.04); }
+      }
+      @keyframes feedMovedBlink {
+        0%, 100% { border-color: rgba(245,158,11,0.55); box-shadow: 0 0 0 1px rgba(245,158,11,0.18), 0 0 28px rgba(245,158,11,0.12); }
+        50%       { border-color: rgba(245,158,11,0.18); box-shadow: 0 0 0 1px rgba(245,158,11,0.06), 0 0 8px  rgba(245,158,11,0.04); }
+      }
+      .feed-blink-tamper { animation: feedThreatBlink 1.1s ease-in-out infinite; }
+      .feed-blink-moved  { animation: feedMovedBlink  1.1s ease-in-out infinite; }
+
+      /* Filter tab buttons */
+      .feed-filter-btn {
+        color: rgb(148,163,184); background: transparent;
+        border-color: rgb(51,65,85);
+        transition: all 0.15s;
+      }
+      .feed-filter-btn:hover { background: rgba(100,116,139,0.1); color: #e2e8f0; }
+      .feed-filter-btn.active-filter {
+        background: rgba(99,102,241,0.15);
+        border-color: rgba(99,102,241,0.4);
+        color: rgb(165,180,252);
+      }
+      .feed-filter-btn[data-filter="TAMPER"].active-filter { background: rgba(239,68,68,0.12); border-color: rgba(239,68,68,0.4); color: rgb(252,165,165); }
+      .feed-filter-btn[data-filter="MOVED"].active-filter  { background: rgba(245,158,11,0.12); border-color: rgba(245,158,11,0.4); color: rgb(252,211,77); }
+      .feed-filter-btn[data-filter="MOTION"].active-filter { background: rgba(99,102,241,0.12); border-color: rgba(99,102,241,0.4); color: rgb(165,180,252); }
+
+      /* Incident list scroll fade hint */
+      #incidentScroll { scrollbar-width: thin; scrollbar-color: rgba(100,116,139,0.3) transparent; }
+      #incidentScroll::-webkit-scrollbar { width: 4px; }
+      #incidentScroll::-webkit-scrollbar-track { background: transparent; }
+      #incidentScroll::-webkit-scrollbar-thumb { background: rgba(100,116,139,0.3); border-radius: 2px; }
+
+      /* Debug cell flash when tamper/moved triggers */
+      @keyframes cellFlashRed {
+        0%   { background-color: rgba(239,68,68,0.25); border-color: rgba(239,68,68,0.6); }
+        100% { background-color: transparent; border-color: rgb(30,41,59); }
+      }
+      @keyframes cellFlashAmber {
+        0%   { background-color: rgba(245,158,11,0.25); border-color: rgba(245,158,11,0.6); }
+        100% { background-color: transparent; border-color: rgb(30,41,59); }
+      }
+      .cell-flash-red   { animation: cellFlashRed   1.2s ease-out forwards; }
+      .cell-flash-amber { animation: cellFlashAmber 1.2s ease-out forwards; }
+
+      /* Threat Feed panel glow on new event */
+      @keyframes feedGlow {
+        0%   { box-shadow: 0 0 0 2px rgba(239,68,68,0.6), 0 0 32px rgba(239,68,68,0.2); }
+        60%  { box-shadow: 0 0 0 1px rgba(239,68,68,0.2), 0 0 12px rgba(239,68,68,0.08); }
+        100% { box-shadow: none; }
+      }
+      .feed-panel-alert {
+        animation: feedGlow 1.8s ease-out forwards;
+      }
+
+      /* Live dot on feed header */
+      @keyframes livePulse {
+        0%, 100% { opacity: 1; transform: scale(1); }
+        50%       { opacity: 0.4; transform: scale(0.75); }
+      }
+      .live-dot {
+        animation: livePulse 1.4s ease-in-out infinite;
+      }
+
     </style>
   </head>
 
@@ -149,7 +242,8 @@
                     id="cameraSelect"
                     class="w-full sm:w-56 px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-sm text-slate-200"
                   >
-                    <option value="">Default camera</option>
+                    <option value="__remote__" selected>Axis Camera</option>
+                    <option value="">Local camera</option>
                   </select>
                   <button
                     id="btnFlip"
@@ -251,6 +345,7 @@
             <div class="p-5">
               <div class="rounded-2xl border border-slate-800 bg-black overflow-hidden">
                 <video id="video" autoplay playsinline class="w-full"></video>
+                <img id="mjpegImg" crossorigin="anonymous" class="w-full hidden" alt="Remote camera feed" />
               </div>
               <canvas id="canvas" class="hidden"></canvas>
             </div>
@@ -299,12 +394,12 @@
                   <div class="mt-1 font-mono text-slate-200"><span id="burstDbg">0</span>ms</div>
                 </div>
 
-                <div class="rounded-xl border border-slate-800 bg-slate-950 px-3 py-2">
+                <div id="tamperCell" class="rounded-xl border border-slate-800 bg-slate-950 px-3 py-2 transition-colors">
                   <div class="text-slate-500">Tamper</div>
                   <div class="mt-1 font-mono text-slate-200"><span id="tamperText">NO</span></div>
                 </div>
 
-                <div class="rounded-xl border border-slate-800 bg-slate-950 px-3 py-2">
+                <div id="movedCell" class="rounded-xl border border-slate-800 bg-slate-950 px-3 py-2 transition-colors">
                   <div class="text-slate-500">Moved</div>
                   <div class="mt-1 font-mono text-slate-200"><span id="movedText">NO</span></div>
                 </div>
@@ -330,16 +425,44 @@
 
         <!-- Feed -->
         <section class="lg:col-span-5">
-          <div class="rounded-3xl border border-slate-800/70 bg-slate-900/40 overflow-hidden">
+          <div id="feedPanel" class="rounded-3xl border border-slate-800/70 bg-slate-900/40 overflow-hidden">
             <div class="px-5 py-4 border-b border-slate-800/70 flex items-center justify-between">
               <div>
-                <h2 class="text-lg font-semibold">Threat Feed</h2>
-                <p class="text-sm text-slate-400">Newest on top.</p>
+                <div class="flex items-center gap-2">
+                  <h2 class="text-lg font-semibold">Threat Feed</h2>
+                  <span id="feedLiveDot" class="hidden h-2 w-2 rounded-full bg-red-400 live-dot"></span>
+                </div>
+                <p class="text-sm text-slate-400">On-chain • tamper-proof • newest on top.</p>
+              </div>
+              <div id="feedEventCount" class="text-right hidden">
+                <div class="text-[11px] text-slate-500">Total events</div>
+                <div class="text-base font-semibold tabular-nums text-slate-200" id="feedCount">—</div>
               </div>
             </div>
 
-            <div class="p-5">
-              <div id="incidents" class="space-y-3"></div>
+            <!-- Live threat status banner -->
+            <div id="feedStatus" class="hidden mx-5 mt-4 rounded-2xl px-4 py-3 flex items-center gap-3 transition-all">
+              <span id="feedStatusDot" class="h-2.5 w-2.5 rounded-full shrink-0"></span>
+              <div class="min-w-0 flex-1">
+                <div id="feedStatusTitle" class="text-sm font-semibold"></div>
+                <div id="feedStatusSub" class="text-xs mt-0.5"></div>
+              </div>
+            </div>
+
+            <!-- Filter tabs + incident count -->
+            <div class="px-5 pt-4 pb-2 flex items-center gap-2 flex-wrap">
+              <button data-filter="ALL"    id="filterAll"    class="feed-filter-btn active-filter text-[11px] px-2.5 py-1 rounded-lg border font-medium">All</button>
+              <button data-filter="TAMPER" id="filterTamper" class="feed-filter-btn text-[11px] px-2.5 py-1 rounded-lg border font-medium">Tamper</button>
+              <button data-filter="MOVED"  id="filterMoved"  class="feed-filter-btn text-[11px] px-2.5 py-1 rounded-lg border font-medium">Moved</button>
+              <button data-filter="MOTION" id="filterMotion" class="feed-filter-btn text-[11px] px-2.5 py-1 rounded-lg border font-medium">Motion</button>
+              <span class="ml-auto text-[11px] text-slate-500">
+                Showing <span id="feedShowing">0</span> of <span id="feedTotal">0</span>
+              </span>
+            </div>
+
+            <!-- Scrollable incident list -->
+            <div id="incidentScroll" class="px-5 pb-5 overflow-y-auto" style="max-height:520px">
+              <div id="incidents" class="space-y-2.5"></div>
             </div>
           </div>
         </section>
@@ -404,7 +527,7 @@
                   <input
                     id="quietRearmMs"
                     type="number"
-                    value="900"
+                    value="200"
                     min="0"
                     max="5000"
                     class="w-full rounded-xl bg-slate-950 border border-slate-800 px-3 py-2 text-sm"
@@ -455,7 +578,7 @@
                   <input
                     id="minBurst"
                     type="number"
-                    value="1200"
+                    value="300"
                     class="w-full rounded-xl bg-slate-950 border border-slate-800 px-3 py-2 text-sm"
                   />
                 </label>
@@ -465,7 +588,7 @@
                   <input
                     id="cooldown"
                     type="number"
-                    value="2500"
+                    value="800"
                     class="w-full rounded-xl bg-slate-950 border border-slate-800 px-3 py-2 text-sm"
                   />
                 </label>
@@ -493,8 +616,8 @@
                   <input
                     id="tamperHoldMs"
                     type="number"
-                    value="900"
-                    min="200"
+                    value="200"
+                    min="100"
                     max="5000"
                     class="w-full rounded-xl bg-slate-950 border border-slate-800 px-3 py-2 text-sm"
                   />
@@ -505,8 +628,8 @@
                   <input
                     id="freezeHoldMs"
                     type="number"
-                    value="2500"
-                    min="800"
+                    value="800"
+                    min="400"
                     max="10000"
                     class="w-full rounded-xl bg-slate-950 border border-slate-800 px-3 py-2 text-sm"
                   />
@@ -547,8 +670,8 @@
                   <input
                     id="movedHoldMs"
                     type="number"
-                    value="1200"
-                    min="200"
+                    value="250"
+                    min="100"
                     max="8000"
                     class="w-full rounded-xl bg-slate-950 border border-slate-800 px-3 py-2 text-sm"
                   />
@@ -687,6 +810,6 @@
       })();
     </script>
 
-    <script type="module" src="/app.js?v=38"></script>
+<script type="module" src="/app.js?v=48"></script>
   </body>
 </html>
