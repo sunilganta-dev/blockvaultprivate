@@ -1043,8 +1043,11 @@ function loop() {
 
   const { mean, std, meanAbsDiff } = frameStats(prevGray, curGray);
 
+  // Skip tamper if frame is completely black — means feed hasn't loaded yet
+  const frameValid = mean > 0.5 || std > 0.5;
+
   // Relaxed: catches partial blocking, hand-over-lens, dim cover
-  const lensCoveredNow = std < 15 && (mean < 60 || mean > 210);
+  const lensCoveredNow = frameValid && std < 15 && (mean < 60 || mean > 210);
   const frozenNow = prevGray && meanAbsDiff < 0.7;
 
   let lensCoveredFlag = false;
@@ -1286,6 +1289,63 @@ async function simulateIncident() {
     alert("Simulate failed. See Last Error.");
   }
 }
+
+// Face enrollment
+(function setupEnroll() {
+  const btnEnroll = $("btnEnroll");
+  const enrollName = $("enrollName");
+  const enrollFile = $("enrollFile");
+  const enrollStatus = $("enrollStatus");
+
+  function showEnrollStatus(msg, isError) {
+    enrollStatus.textContent = msg;
+    enrollStatus.className = `text-[11px] mt-1 ${isError ? "text-red-400" : "text-emerald-400"}`;
+    enrollStatus.classList.remove("hidden");
+  }
+
+  btnEnroll?.addEventListener("click", async () => {
+    const name = (enrollName?.value || "").trim();
+    const file = enrollFile?.files?.[0];
+
+    // Client-side validation
+    if (!name) return showEnrollStatus("Enter a person name.", true);
+    if (!/^[a-zA-Z0-9 _-]+$/.test(name)) return showEnrollStatus("Name can only contain letters, numbers, spaces, underscores or hyphens.", true);
+    if (!file) return showEnrollStatus("Select a photo file.", true);
+    if (!["image/jpeg", "image/jpg", "image/png"].includes(file.type)) return showEnrollStatus("Invalid format. Only JPEG and PNG files are accepted.", true);
+    if (file.size > 10 * 1024 * 1024) return showEnrollStatus("File too large. Maximum size is 10MB.", true);
+    if (file.size < 5 * 1024) return showEnrollStatus("File too small. Please use a clear, full-resolution photo.", true);
+
+    btnEnroll.disabled = true;
+    btnEnroll.textContent = "Enrolling…";
+    showEnrollStatus("Uploading…", false);
+
+    try {
+      const reader = new FileReader();
+      const imageBase64 = await new Promise((res, rej) => {
+        reader.onload = () => res(reader.result);
+        reader.onerror = rej;
+        reader.readAsDataURL(file);
+      });
+
+      const r = await fetch(`${location.origin}/enrollFace`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, imageBase64 })
+      });
+      const j = await r.json();
+      if (!r.ok || !j.ok) throw new Error(j.error || "Enroll failed");
+
+      showEnrollStatus(`Enrolled "${j.name}" — ${j.db_embeddings} face(s) in database.`, false);
+      enrollName.value = "";
+      enrollFile.value = "";
+    } catch (e) {
+      showEnrollStatus(e.message || "Enroll failed.", true);
+    } finally {
+      btnEnroll.disabled = false;
+      btnEnroll.textContent = "Enroll Face";
+    }
+  });
+})();
 
 // Controls
 btnStart.addEventListener("click", startCamera);
