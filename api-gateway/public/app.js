@@ -1,8 +1,4 @@
-// BVS UI v3.8 — Policy-gated event logging + Mobile Camera Flip
-// - Motion is a signal always visible in UI
-// - Events logged on-chain: TAMPER, MOVED, and HIGH-MOTION only (configurable)
-// - Quiet Re-arm prevents repeated phantom events from camera noise/exposure
-// - Mobile camera support: dropdown device select + Flip (front/back)
+// BlockVault Systems — Frontend
 
 const $ = (id) => document.getElementById(id);
 
