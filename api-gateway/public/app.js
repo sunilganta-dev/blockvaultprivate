@@ -98,6 +98,7 @@ let remoteMode = false;
 let armed = false;
 let armedAt = null;
 let lastTriggeredAt = 0;
+let lastHeartbeatAt = 0;
 
 // Track which blocks we've already shown so we can flash-animate new arrivals
 const seenBlockHashes = new Set();
@@ -370,6 +371,15 @@ function updateFeedStatus() {
     feedStatusSub.textContent = `Position shift detected — hash delta ${lastHashDist}/64 — recording on-chain`;
     feedStatusSub.className = "text-xs mt-0.5 text-amber-400/90";
     feedPanel.classList.add("feed-blink-moved");
+  } else if (motionActive) {
+    feedStatus.className = "mx-5 mt-4 rounded-2xl px-4 py-3 flex items-center gap-3 bg-indigo-500/10 border border-indigo-500/40";
+    feedStatusDot.className = "h-3 w-3 rounded-full bg-indigo-400 shrink-0 live-dot";
+    feedStatusTitle.textContent = "MOTION DETECTED";
+    feedStatusTitle.className = "text-sm font-bold text-indigo-300 tracking-wide";
+    feedStatusSub.textContent = "Movement in frame — monitoring for sustained activity";
+    feedStatusSub.className = "text-xs mt-0.5 text-indigo-400/90";
+    feedPanel.style.borderColor = "rgba(99,102,241,0.35)";
+    feedPanel.style.boxShadow = "0 0 0 1px rgba(99,102,241,0.12), 0 0 20px rgba(99,102,241,0.06)";
   } else {
     feedStatus.className = "mx-5 mt-4 rounded-2xl px-4 py-3 flex items-center gap-3 bg-emerald-500/10 border border-emerald-500/35";
     feedStatusDot.className = "h-3 w-3 rounded-full bg-emerald-400 shrink-0";
@@ -392,28 +402,43 @@ function alertFeedPanel(isThreat) {
 
 function badgeFor(i) {
   const sig = i.signals || {};
-  if (sig.tamperSuspected || sig.repositionSuspected) return "border-red-500/40 bg-red-500/10 text-red-200";
+  if (sig.tamperSuspected)     return "border-red-500/40 bg-red-500/10 text-red-200";
+  if (sig.repositionSuspected) return "border-amber-500/40 bg-amber-500/10 text-amber-200";
   const t = (i.type || "").toUpperCase();
-  if (t === "TAMPER" || t === "MOVED") return "border-red-500/40 bg-red-500/10 text-red-200";
-  return "border-emerald-500/30 bg-emerald-500/10 text-emerald-200";
+  if (t === "TAMPER")  return "border-red-500/40 bg-red-500/10 text-red-200";
+  if (t === "MOVED")   return "border-amber-500/40 bg-amber-500/10 text-amber-200";
+  if (t === "PERSON")  return "border-blue-500/40 bg-blue-500/10 text-blue-200";
+  if (t === "IDLE")    return "border-emerald-500/30 bg-emerald-500/10 text-emerald-300";
+  return "border-indigo-500/30 bg-indigo-500/10 text-indigo-200";
+}
+
+function displayLabel(i) {
+  const t = (i.type || "").toUpperCase();
+  if (t === "MOTION") return "MOVEMENT";
+  return i.type || "EVENT";
 }
 
 function dotFor(i) {
   const t = (i.type || "").toUpperCase();
-  if (t === "TAMPER" || t === "MOVED") return "bg-red-400";
-  return "bg-emerald-400";
+  if (t === "TAMPER")  return "bg-red-400";
+  if (t === "MOVED")   return "bg-amber-400";
+  if (t === "PERSON")  return "bg-blue-400";
+  if (t === "IDLE")    return "bg-emerald-400";
+  return "bg-indigo-400";
 }
 
 function faceStatusFor(i) {
   const fa = i.faceAnalysis;
   if (!fa) return null;
   const d = fa.frDecision || "PENDING";
-  if (d === "PENDING")  return { label: "FR: PENDING",  cls: "border-slate-600/50 text-slate-400 bg-slate-800/60" };
-  if (d === "ALLOW")    return { label: "FR: ALLOW",    cls: "border-emerald-500/40 text-emerald-300 bg-emerald-500/10" };
-  if (d === "UNKNOWN")  return { label: "FR: UNKNOWN",  cls: "border-amber-500/40 text-amber-300 bg-amber-500/10" };
-  if (d === "NO_FACE")  return { label: "FR: NO FACE",  cls: "border-slate-600/50 text-slate-500 bg-slate-800/60" };
+  const name = fa.bestMatch?.id ? ` · ${fa.bestMatch.id}` : "";
+  if (d === "PENDING")  return { label: "ID•",             cls: "border-slate-600/50 text-slate-400 bg-slate-800/60" };
+  if (d === "ALLOW")    return { label: `✓${name}`,        cls: "border-emerald-500/50 text-emerald-200 bg-emerald-500/15 font-bold" };
+  if (d === "UNKNOWN")  return { label: "? Unknown",       cls: "border-amber-500/40 text-amber-300 bg-amber-500/10" };
+  if (d === "NO_FACE")  return { label: "No face",         cls: "border-slate-700/50 text-slate-600 bg-transparent" };
   if (d === "NO_IMAGE") return null;
-  return { label: "FR: " + d, cls: "border-slate-600/50 text-slate-400 bg-slate-800/60" };
+  if (d === "ERROR")    return { label: "FR err",          cls: "border-red-500/30 text-red-400 bg-red-500/5" };
+  return { label: d, cls: "border-slate-600/50 text-slate-400 bg-slate-800/60" };
 }
 
 async function refreshIncidents() {
@@ -484,6 +509,20 @@ async function refreshIncidents() {
           const key = i._blockHash || i.ts || "";
           const isNew = newHashes.has(key);
           const t = (i.type || "").toUpperCase();
+
+          // IDLE — compact single-line green card
+          if (t === "IDLE") {
+            return `
+              <div data-key="${escapeHtml(key)}" class="rounded-xl border border-emerald-500/20 bg-emerald-500/5 px-4 py-2.5 flex items-center gap-3">
+                <div class="h-2 w-2 rounded-full bg-emerald-400 shrink-0"></div>
+                <span class="text-[11px] font-semibold text-emerald-400 tracking-wide">IDLE</span>
+                <span class="text-[11px] text-slate-500">${escapeHtml(i.cameraId || "")}</span>
+                ${i.evidenceHash ? `<span class="text-[10px] px-1.5 py-0.5 rounded border border-slate-700/50 text-slate-500 bg-slate-800/40 font-mono">SHA-256</span>` : ""}
+                ${blockIndex ? `<span class="text-[10px] font-mono text-indigo-400/50">Block #${escapeHtml(blockIndex)}</span>` : ""}
+                <span class="ml-auto text-[10px] text-slate-600">${escapeHtml(ts)}</span>
+              </div>`;
+          }
+
           const flashClass = isNew
             ? (t === "TAMPER" || t === "MOVED" || t === "THREAT" ? "event-flash-threat" : "event-flash-motion")
             : "";
@@ -491,14 +530,18 @@ async function refreshIncidents() {
           // Type-specific accent colors
           const isThreat = t === "TAMPER" || t === "THREAT";
           const isMoved  = t === "MOVED";
+          const isPerson = t === "PERSON";
           const accentBorder = isThreat ? "border-l-red-500/70"
                              : isMoved  ? "border-l-amber-500/70"
+                             : isPerson ? "border-l-blue-500/60"
                              :            "border-l-indigo-500/50";
           const accentBg    = isThreat ? "bg-red-500/5"
                             : isMoved  ? "bg-amber-500/5"
+                            : isPerson ? "bg-blue-500/5"
                             :            "bg-indigo-500/5";
           const severityBar = isThreat ? "bg-red-500"
                             : isMoved  ? "bg-amber-500"
+                            : isPerson ? "bg-blue-500"
                             :            "bg-indigo-500";
 
           // Type-specific inline detail section (shown in summary)
@@ -535,6 +578,22 @@ async function refreshIncidents() {
                   <span class="text-[11px] text-slate-500">Baseline age: <span class="text-slate-400">${baseAge}</span></span>
                 </div>
               </div>`;
+          } else if (isPerson) {
+            const fa = i.faceAnalysis || {};
+            const decision = fa.frDecision || "PENDING";
+            const match = fa.bestMatch;
+            const faceCount = Array.isArray(fa.faces) ? fa.faces.length : 0;
+            const confidence = match?.score != null ? `${(match.score * 100).toFixed(1)}%` : null;
+            const decisionColor = decision === "ALLOW" ? "text-emerald-300 border-emerald-500/40 bg-emerald-500/10"
+                                : decision === "UNKNOWN" ? "text-amber-300 border-amber-500/40 bg-amber-500/10"
+                                : decision === "PENDING" ? "text-slate-400 border-slate-600/50 bg-slate-800/40"
+                                : "text-slate-400 border-slate-600/50 bg-slate-800/40";
+            typeDetail = `
+              <div class="mt-2 flex items-center gap-2 flex-wrap">
+                <span class="text-[11px] px-2 py-0.5 rounded border ${decisionColor} font-semibold">${decision}</span>
+                ${match?.id ? `<span class="text-[11px] text-slate-400">${escapeHtml(match.id)}${confidence ? ` <span class="font-mono text-blue-300">${confidence}</span>` : ""}</span>` : ""}
+                <span class="text-[11px] text-slate-500">${faceCount} face${faceCount !== 1 ? "s" : ""} detected</span>
+              </div>`;
           } else {
             const ema  = i.meta?.motionEma  ?? i.meta?.motionScore ?? 0;
             const raw  = i.meta?.motionScore ?? 0;
@@ -565,7 +624,7 @@ async function refreshIncidents() {
                   <!-- Header row -->
                   <div class="flex items-center gap-2 flex-wrap">
                     <span class="inline-flex items-center gap-1.5 text-[12px] px-2 py-1 rounded-lg border ${badge} font-semibold tracking-wide">
-                      ${escapeHtml(i.type || "EVENT")}
+                      ${escapeHtml(displayLabel(i))}
                     </span>
                     <span class="text-[11px] text-slate-400">${escapeHtml(i.cameraId || "")}</span>
                     ${i.evidenceHash ? `<span class="text-[10px] px-1.5 py-0.5 rounded border border-slate-600/50 text-slate-400 bg-slate-800/60 font-mono">SHA-256</span>` : ""}
@@ -636,7 +695,7 @@ async function refreshIncidents() {
                   const faceCount = Array.isArray(fa.faces) ? fa.faces.length : "—";
                   return `
                   <div class="rounded-xl border border-indigo-500/20 bg-indigo-500/5 p-3 space-y-2">
-                    <div class="text-[11px] font-bold text-indigo-300 tracking-wide uppercase">Face Recognition</div>
+                    <div class="text-[11px] font-bold text-indigo-300 tracking-wide uppercase">FR</div>
                     <div class="grid grid-cols-3 gap-2">
                       <div>
                         <div class="text-[10px] text-slate-500 uppercase tracking-wide">Decision</div>
@@ -1038,16 +1097,16 @@ function loop() {
 
   // Tamper
   const tamperEnabled = Boolean(tamperEnabledEl?.checked);
-  const tamperHoldMs = Number(tamperHoldMsEl.value || 400);
-  const freezeHoldMs = Number(freezeHoldMsEl.value || 1200);
+  const tamperHoldMs = Number(tamperHoldMsEl.value || 150);
+  const freezeHoldMs = Number(freezeHoldMsEl.value || 800);
 
   const { mean, std, meanAbsDiff } = frameStats(prevGray, curGray);
 
   // Skip tamper if frame is completely black — means feed hasn't loaded yet
   const frameValid = mean > 0.5 || std > 0.5;
 
-  // Relaxed: catches partial blocking, hand-over-lens, dim cover
-  const lensCoveredNow = frameValid && std < 15 && (mean < 60 || mean > 210);
+  // Catches any uniform frame: dark cloth, hand/skin, paper, tape — regardless of brightness
+  const lensCoveredNow = frameValid && std < 12;
   const frozenNow = prevGray && meanAbsDiff < 0.7;
 
   let lensCoveredFlag = false;
@@ -1081,7 +1140,7 @@ function loop() {
 
   // Reposition (settle-based)
   const movedEnabled = Boolean(movedEnabledEl?.checked);
-  const movedHoldMs = Number(movedHoldMsEl.value || 500);
+  const movedHoldMs = Number(movedHoldMsEl.value || 600);
   const movedThreshold = Number(movedThresholdEl.value || 18);
 
   if (stream && prevGray && armed && movedEnabled && !tamperSuspected) {
@@ -1222,6 +1281,24 @@ function loop() {
       });
   }
 
+  // IDLE heartbeat — log every 10s when armed, stream active, no active threat
+  const HEARTBEAT_MS = 10000;
+  if (armed && stream && prevGray && !tamperSuspected && !repositionSuspected && !motionActive) {
+    if (now - lastHeartbeatAt >= HEARTBEAT_MS) {
+      lastHeartbeatAt = now;
+      // Compute a lightweight frame checksum for on-chain integrity
+      let checksum = 0;
+      for (let i = 0; i < curGray.length; i += 64) checksum = (checksum + curGray[i]) & 0xFFFFFF;
+      const frameChecksum = checksum.toString(16).padStart(6, "0");
+      postIncident({
+        cameraId: getActiveCameraId(),
+        type: "IDLE",
+        severity: 10,
+        meta: { why: "HEARTBEAT", frameChecksum, w: canvas.width, h: canvas.height }
+      }).catch(() => {});
+    }
+  }
+
   prevGray = curGray;
   rafId = requestAnimationFrame(loop);
 }
@@ -1292,16 +1369,64 @@ async function simulateIncident() {
 
 // Face enrollment
 (function setupEnroll() {
-  const btnEnroll = $("btnEnroll");
-  const enrollName = $("enrollName");
-  const enrollFile = $("enrollFile");
-  const enrollStatus = $("enrollStatus");
+  const btnEnroll       = $("btnEnroll");
+  const btnRefresh      = $("btnRefreshFaces");
+  const enrollName      = $("enrollName");
+  const enrollFile      = $("enrollFile");
+  const enrollStatus    = $("enrollStatus");
+  const enrolledList    = $("enrolledList");
 
   function showEnrollStatus(msg, isError) {
+    if (!enrollStatus) return;
     enrollStatus.textContent = msg;
     enrollStatus.className = `text-[11px] mt-1 ${isError ? "text-red-400" : "text-emerald-400"}`;
     enrollStatus.classList.remove("hidden");
   }
+
+  async function loadEnrolledList() {
+    if (!enrolledList) return;
+    try {
+      const r = await fetch(`${location.origin}/listFaces`, { cache: "no-store" });
+      const j = await r.json();
+      if (!j.ok || !j.persons.length) {
+        enrolledList.innerHTML = `<div class="text-[11px] text-slate-600 italic">No persons enrolled yet.</div>`;
+        return;
+      }
+      enrolledList.innerHTML = j.persons.map((p) => `
+        <div class="flex items-center justify-between rounded-xl border border-slate-800 bg-slate-950/60 px-3 py-2">
+          <div>
+            <span class="text-[12px] text-slate-200 font-medium">${escapeHtml(p.name)}</span>
+            <span class="ml-2 text-[10px] text-slate-500">${p.photos} photo${p.photos !== 1 ? "s" : ""}</span>
+          </div>
+          <button data-name="${escapeHtml(p.name)}" class="btn-delete-face text-[10px] text-red-400/70 hover:text-red-300 px-1.5 py-0.5 rounded border border-red-500/20 hover:border-red-500/40 transition-colors">Remove</button>
+        </div>`).join("");
+
+      enrolledList.querySelectorAll(".btn-delete-face").forEach((btn) => {
+        btn.addEventListener("click", async () => {
+          const name = btn.dataset.name;
+          if (!confirm(`Remove "${name}" from FR database?`)) return;
+          btn.textContent = "…";
+          btn.disabled = true;
+          try {
+            const r = await fetch(`${location.origin}/deleteFace/${encodeURIComponent(name)}`, { method: "DELETE" });
+            const j = await r.json();
+            if (!j.ok) throw new Error(j.error || "Delete failed");
+            showEnrollStatus(`Removed "${name}" from database.`, false);
+            loadEnrolledList();
+          } catch (e) {
+            showEnrollStatus(e.message || "Delete failed.", true);
+            btn.textContent = "Remove";
+            btn.disabled = false;
+          }
+        });
+      });
+    } catch {
+      enrolledList.innerHTML = `<div class="text-[11px] text-slate-600 italic">Unable to load list.</div>`;
+    }
+  }
+
+  btnRefresh?.addEventListener("click", loadEnrolledList);
+  loadEnrolledList();
 
   btnEnroll?.addEventListener("click", async () => {
     const name = (enrollName?.value || "").trim();
@@ -1309,15 +1434,15 @@ async function simulateIncident() {
 
     // Client-side validation
     if (!name) return showEnrollStatus("Enter a person name.", true);
-    if (!/^[a-zA-Z0-9 _-]+$/.test(name)) return showEnrollStatus("Name can only contain letters, numbers, spaces, underscores or hyphens.", true);
+    if (!/^[a-zA-Z0-9 _-]+$/.test(name)) return showEnrollStatus("Name: letters, numbers, spaces, _ or - only.", true);
     if (!file) return showEnrollStatus("Select a photo file.", true);
-    if (!["image/jpeg", "image/jpg", "image/png"].includes(file.type)) return showEnrollStatus("Invalid format. Only JPEG and PNG files are accepted.", true);
-    if (file.size > 10 * 1024 * 1024) return showEnrollStatus("File too large. Maximum size is 10MB.", true);
-    if (file.size < 5 * 1024) return showEnrollStatus("File too small. Please use a clear, full-resolution photo.", true);
+    if (!["image/jpeg", "image/jpg", "image/png"].includes(file.type)) return showEnrollStatus("Invalid format. JPEG or PNG only.", true);
+    if (file.size > 10 * 1024 * 1024) return showEnrollStatus("File too large. Max 10MB.", true);
+    if (file.size < 5 * 1024) return showEnrollStatus("File too small — use a clear full-resolution photo.", true);
 
     btnEnroll.disabled = true;
     btnEnroll.textContent = "Enrolling…";
-    showEnrollStatus("Uploading…", false);
+    showEnrollStatus("Uploading and building embeddings…", false);
 
     try {
       const reader = new FileReader();
@@ -1335,9 +1460,12 @@ async function simulateIncident() {
       const j = await r.json();
       if (!r.ok || !j.ok) throw new Error(j.error || "Enroll failed");
 
-      showEnrollStatus(`Enrolled "${j.name}" — ${j.db_embeddings} face(s) in database.`, false);
+      const embCount = j.db_embeddings != null ? ` · ${j.db_embeddings} embedding${j.db_embeddings !== 1 ? "s" : ""} loaded` : "";
+      const reloadWarn = j.reloadError ? ` ⚠ FR reload failed: ${j.reloadError}` : "";
+      showEnrollStatus(`${j.isNew ? "Enrolled" : "Updated"} "${j.name}"${embCount}${reloadWarn}`, !!j.reloadError);
       enrollName.value = "";
       enrollFile.value = "";
+      loadEnrolledList();
     } catch (e) {
       showEnrollStatus(e.message || "Enroll failed.", true);
     } finally {

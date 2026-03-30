@@ -78,6 +78,8 @@
         border-color: rgba(99,102,241,0.4);
         color: rgb(165,180,252);
       }
+      .feed-filter-btn[data-filter="IDLE"].active-filter   { background: rgba(52,211,153,0.12); border-color: rgba(52,211,153,0.4); color: rgb(110,231,183); }
+      .feed-filter-btn[data-filter="PERSON"].active-filter { background: rgba(59,130,246,0.12); border-color: rgba(59,130,246,0.4); color: rgb(147,197,253); }
       .feed-filter-btn[data-filter="TAMPER"].active-filter { background: rgba(239,68,68,0.12); border-color: rgba(239,68,68,0.4); color: rgb(252,165,165); }
       .feed-filter-btn[data-filter="MOVED"].active-filter  { background: rgba(245,158,11,0.12); border-color: rgba(245,158,11,0.4); color: rgb(252,211,77); }
       .feed-filter-btn[data-filter="MOTION"].active-filter { background: rgba(99,102,241,0.12); border-color: rgba(99,102,241,0.4); color: rgb(165,180,252); }
@@ -452,6 +454,8 @@
             <!-- Filter tabs + incident count -->
             <div class="px-5 pt-4 pb-2 flex items-center gap-2 flex-wrap">
               <button data-filter="ALL"    id="filterAll"    class="feed-filter-btn active-filter text-[11px] px-2.5 py-1 rounded-lg border font-medium">All</button>
+              <button data-filter="IDLE"   id="filterIdle"   class="feed-filter-btn text-[11px] px-2.5 py-1 rounded-lg border font-medium">Idle</button>
+              <button data-filter="PERSON" id="filterPerson" class="feed-filter-btn text-[11px] px-2.5 py-1 rounded-lg border font-medium">Person</button>
               <button data-filter="TAMPER" id="filterTamper" class="feed-filter-btn text-[11px] px-2.5 py-1 rounded-lg border font-medium">Tamper</button>
               <button data-filter="MOVED"  id="filterMoved"  class="feed-filter-btn text-[11px] px-2.5 py-1 rounded-lg border font-medium">Moved</button>
               <button data-filter="MOTION" id="filterMotion" class="feed-filter-btn text-[11px] px-2.5 py-1 rounded-lg border font-medium">Motion</button>
@@ -616,8 +620,8 @@
                   <input
                     id="tamperHoldMs"
                     type="number"
-                    value="200"
-                    min="100"
+                    value="150"
+                    min="50"
                     max="5000"
                     class="w-full rounded-xl bg-slate-950 border border-slate-800 px-3 py-2 text-sm"
                   />
@@ -670,8 +674,8 @@
                   <input
                     id="movedHoldMs"
                     type="number"
-                    value="250"
-                    min="100"
+                    value="600"
+                    min="200"
                     max="8000"
                     class="w-full rounded-xl bg-slate-950 border border-slate-800 px-3 py-2 text-sm"
                   />
@@ -681,10 +685,20 @@
 
             <!-- Face Enrollment -->
             <div class="rounded-2xl border border-slate-800 bg-slate-950/40 p-4">
-              <div class="text-sm font-semibold">Face Enrollment</div>
-              <div class="text-xs text-slate-400 mt-1">Add an authorized person to the FR database</div>
+              <div class="flex items-center justify-between">
+                <div>
+                  <div class="text-sm font-semibold">Face Enrollment</div>
+                  <div class="text-xs text-slate-400 mt-0.5">Add authorized persons to the FR database</div>
+                </div>
+                <button id="btnRefreshFaces" title="Refresh list" class="text-slate-500 hover:text-slate-300 text-xs px-2 py-1 rounded-lg border border-slate-800 hover:border-slate-600 transition-colors">↻</button>
+              </div>
 
-              <div class="mt-3 space-y-3">
+              <!-- Enrolled persons list -->
+              <div id="enrolledList" class="mt-3 space-y-1.5 min-h-[28px]">
+                <div class="text-[11px] text-slate-600 italic">Loading…</div>
+              </div>
+
+              <div class="mt-4 space-y-3">
                 <label class="block">
                   <div class="text-[11px] text-slate-400 mb-1">Person Name</div>
                   <input
@@ -696,7 +710,7 @@
                 </label>
 
                 <label class="block">
-                  <div class="text-[11px] text-slate-400 mb-1">Photo (clear face, JPEG/PNG)</div>
+                  <div class="text-[11px] text-slate-400 mb-1">Photo (clear face, JPEG/PNG, max 10MB)</div>
                   <input
                     id="enrollFile"
                     type="file"
@@ -712,7 +726,7 @@
                   Enroll Face
                 </button>
 
-                <div id="enrollStatus" class="text-[11px] text-slate-500 hidden"></div>
+                <div id="enrollStatus" class="text-[11px] hidden"></div>
               </div>
             </div>
 
