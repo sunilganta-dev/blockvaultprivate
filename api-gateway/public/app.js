@@ -94,6 +94,7 @@ const movedReasonText = $("movedReasonText");
 let stream = null;
 let rafId = null;
 let remoteMode = false;
+let mjpegAlive = false;   // true only after first successful frame load
 
 let armed = false;
 let armedAt = null;
@@ -902,7 +903,9 @@ async function startCamera() {
       : "http://160.202.129.129:5600/camera";
 
     mjpegImg.onerror = null;
+    mjpegImg.onload = null;
     mjpegImg.src = "";
+    mjpegAlive = false;
     mjpegImg.classList.remove("hidden");
     video.classList.add("hidden");
 
@@ -924,10 +927,14 @@ async function startCamera() {
 
     mjpegImg.src = mjpegUrl;
 
+    // Mark stream alive on first frame — suppresses false freeze-tamper on dead feed
+    mjpegImg.onload = () => { mjpegAlive = true; };
+
     // Auto-reconnect if MJPEG stream drops
     let reconnectTimer = null;
     mjpegImg.onerror = () => {
       if (!remoteMode) return;
+      mjpegAlive = false;
       setStatus("error", "Stream lost — reconnecting…");
       clearTimeout(reconnectTimer);
       reconnectTimer = setTimeout(() => {
@@ -1028,9 +1035,12 @@ function stopCamera() {
   rafId = null;
   if (remoteMode) {
     mjpegImg.src = "";
+    mjpegImg.onerror = null;
+    mjpegImg.onload = null;
     mjpegImg.classList.add("hidden");
     video.classList.remove("hidden");
     remoteMode = false;
+    mjpegAlive = false;
   } else if (stream) {
     stream.getTracks().forEach((t) => t.stop());
   }
@@ -1143,8 +1153,9 @@ function loop() {
 
   // Catches any uniform frame: dark cloth, hand/skin, paper, tape — regardless of brightness
   const lensCoveredNow = frameValid && std < 12;
-  // Only check frozen when lens is NOT covered (hand over lens is naturally "frozen" too)
-  const frozenNow = frameValid && !lensCoveredNow && prevGray && meanAbsDiff < 0.7;
+  // Only check frozen when lens is NOT covered, and (for remote) stream is confirmed alive
+  const streamAlive = !remoteMode || mjpegAlive;
+  const frozenNow = frameValid && !lensCoveredNow && streamAlive && prevGray && meanAbsDiff < 0.7;
 
   let lensCoveredFlag = false;
   let frozenFlag = false;
