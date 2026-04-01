@@ -897,11 +897,47 @@ async function startCamera() {
   // Remote MJPEG mode — bypass getUserMedia entirely
   if (cameraSelectEl?.value === "__remote__") {
     remoteMode = true;
-    mjpegImg.src = location.protocol === "https:"
+    const mjpegUrl = location.protocol === "https:"
       ? `${location.origin}/camera`
       : "http://160.202.129.129:5600/camera";
+
+    mjpegImg.onerror = null;
+    mjpegImg.src = "";
     mjpegImg.classList.remove("hidden");
     video.classList.add("hidden");
+
+    // Axis camera health check before starting loop
+    let axisReachable = false;
+    try {
+      const probe = await fetch(mjpegUrl, { signal: AbortSignal.timeout(5000), method: "HEAD" }).catch(() => null);
+      axisReachable = probe && probe.ok;
+    } catch {}
+
+    if (!axisReachable) {
+      setStatus("error", "Axis camera unreachable");
+      setError("Axis camera is offline. Check: (1) Tailscale VPN connected on VM, (2) camera-service running (pm2 status), (3) camera powered on at 192.168.4.202");
+      remoteMode = false;
+      mjpegImg.classList.add("hidden");
+      video.classList.remove("hidden");
+      return;
+    }
+
+    mjpegImg.src = mjpegUrl;
+
+    // Auto-reconnect if MJPEG stream drops
+    let reconnectTimer = null;
+    mjpegImg.onerror = () => {
+      if (!remoteMode) return;
+      setStatus("error", "Stream lost — reconnecting…");
+      clearTimeout(reconnectTimer);
+      reconnectTimer = setTimeout(() => {
+        if (remoteMode) {
+          mjpegImg.src = "";
+          mjpegImg.src = mjpegUrl;
+        }
+      }, 3000);
+    };
+
     stream = "remote";
     canvas.width = 640;
     canvas.height = 480;
@@ -1107,7 +1143,8 @@ function loop() {
 
   // Catches any uniform frame: dark cloth, hand/skin, paper, tape — regardless of brightness
   const lensCoveredNow = frameValid && std < 12;
-  const frozenNow = prevGray && meanAbsDiff < 0.7;
+  // Only check frozen when lens is NOT covered (hand over lens is naturally "frozen" too)
+  const frozenNow = frameValid && !lensCoveredNow && prevGray && meanAbsDiff < 0.7;
 
   let lensCoveredFlag = false;
   let frozenFlag = false;
@@ -1132,11 +1169,20 @@ function loop() {
     freezeStartAt = null;
   }
 
+  const wasTampered = tamperSuspected;
   tamperSuspected = Boolean(lensCoveredFlag || frozenFlag);
   tamperReason =
     lensCoveredFlag ? "LENS_COVER_OR_OBSTRUCTION" :
     frozenFlag ? "FEED_FROZEN" :
     "—";
+
+  // When tamper clears, re-baseline so the post-tamper scene doesn't trigger a false MOVED
+  if (wasTampered && !tamperSuspected && prevGray) {
+    baselineHash = dHash64(prevGray, SMALL_W, SMALL_H);
+    baselineSetAt = now;
+    movedStartAt = null;
+    repositionSuspected = false;
+  }
 
   // Reposition (settle-based)
   const movedEnabled = Boolean(movedEnabledEl?.checked);
