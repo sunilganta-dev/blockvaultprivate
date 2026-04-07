@@ -1,0 +1,13 @@
+{
+  "name": "blockvault-edge-agent",
+  "version": "1.0.0",
+  "description": "Edge agent — pulls MJPEG from Axis camera and pushes frames to VM via WebSocket",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "dotenv": "^16.0.0",
+    "ws": "^8.0.0"
+  }
+}

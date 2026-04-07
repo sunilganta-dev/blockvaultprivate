@@ -1,0 +1,18 @@
+# Cloudflare Tunnel — Block Vault Systems
+# Place at: ~/.cloudflared/config.yml
+# Run: cloudflared tunnel create blockvault-axis-cam-1
+# Then replace <TUNNEL_ID> and <DOMAIN> below
+
+tunnel: <TUNNEL_ID>
+credentials-file: /etc/cloudflared/<TUNNEL_ID>.json
+
+ingress:
+  - hostname: cam1.<YOUR_DOMAIN>
+    service: http://<CAMERA_IP>
+    originRequest:
+      noTLSVerify: true
+      connectTimeout: 10s
+      tcpKeepAlive: 30s
+      keepAliveTimeout: 90s
+      keepAliveConnections: 100
+  - service: http_status:404

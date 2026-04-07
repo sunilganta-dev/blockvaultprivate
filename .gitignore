@@ -1,9 +1,10 @@
-cat > .gitignore <<'EOF'
+# macOS
 .DS_Store
 
-# Env files
+# Env files — never commit secrets
 .env
 .env.*
+!.env.example
 
 # Node
 node_modules/
@@ -16,11 +17,11 @@ dist/
 build/
 *.tsbuildinfo
 
-# Evidence images
+# Evidence images (off-chain storage, not in repo)
+api-gateway/evidence/
 api-gateway/public/evidence/
-api-gateway/public/evidence/**
 
-# Fabric secrets / crypto materials
+# Fabric crypto materials
 **/organizations/
 **/wallet/
 **/*.pem
@@ -30,4 +31,8 @@ api-gateway/public/evidence/**
 
 # IDE
 .vscode/
-EOF
+.history/
+
+# Logs
+*.log
+logs/

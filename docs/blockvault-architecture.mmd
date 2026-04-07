@@ -1,0 +1,59 @@
+flowchart LR
+  U[User / Operator Browser]
+  Cam[Axis Camera MJPEG Source]
+
+  subgraph EdgeSite[Edge Site]
+    EA[Edge Agent\nNode.js\nPulls MJPEG via curl]
+  end
+
+  subgraph VM[Remote VM]
+    CS[camera-service\nHTTP 5600 MJPEG\nWS 5700 frame ingest]
+  end
+
+  Cam -- Digest auth MJPEG --> EA
+  EA -- WS binary JPEG frames\nws://VM:5700?camId=... --> CS
+  U -- Optional live stream view\nhttp://VM:5600/camera/:camId --> CS
+
+  subgraph APIGW[api-gateway Service]
+    UI[Web UI\npublic/index.html + app.js]
+    API[Express API\napi/health\napi/incidents GET POST]
+    TH[Threat Engine\ncomputeThreat]
+    EV[Evidence Store\nevidence/*.jpg]
+    MEM[In-memory repeat tracker\n60s window]
+    FABC[Fabric Gateway Client\nnewFabricClient]
+  end
+
+  U -- Open app + use browser camera --> UI
+  UI -- POST incident + imageBase64 --> API
+  API -- Save JPEG --> EV
+  API -- Hash evidence + metadata --> API
+  API -- Signals + context --> TH
+  API -- repeatCount60s --> MEM
+  TH -- threatScore + level + reasons --> API
+
+  subgraph FabricNet[Hyperledger Fabric Test Network]
+    PEER[peer0.org1.example.com:7051]
+    CC[incident chaincode\nCreateIncident GetAllIncidents GetIncident]
+    LEDGER[(World State\nINCIDENT records)]
+  end
+
+  API -- submit evaluate tx --> FABC
+  FABC -- gRPC TLS --> PEER
+  PEER --> CC
+  CC --> LEDGER
+
+  API -- GET all incidents --> FABC
+  FABC -- evaluate GetAllIncidents --> PEER
+  PEER --> CC
+  CC --> LEDGER
+  LEDGER --> CC
+  CC --> PEER
+  PEER --> FABC
+  FABC --> API
+  API --> UI
+  UI --> U
+
+  NOTE{{Current logging UI uses browser getUserMedia. Edge to camera-service is parallel and not directly wired to incident POST pipeline.}}
+  UI -. separate from .- CS
+  NOTE -. explains .- UI
+  NOTE -. explains .- CS
